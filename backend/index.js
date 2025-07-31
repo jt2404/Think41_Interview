@@ -17,8 +17,8 @@ mongoose.connect(MONGO_URL, {
     useUnifiedTopology: true,}
 ).then(()=>{
     console.log('Connected to MongoDB');
-    checkImportFlag();
-    // importCSV();
+    // checkImportFlag();
+    importCSV();
 }).catch((err)=>{
     console.error('Error connecting to MongoDB:', err);
 })
@@ -37,7 +37,7 @@ app.listen(PORT, () => {
       return;
     }
   }
-     importCSV();
+    //  importCSV();
 }
 
 function importCSV(){
@@ -60,8 +60,8 @@ function importCSV(){
       try {
         await Product.insertMany(results);
         console.log('Products imported successfully!');
-        fs.writeFileSync(flagFile, JSON.stringify({ productsImported: true }, null, 2));
-        mongoose.connection.close();
+        // fs.writeFileSync(flagFile, JSON.stringify({ productsImported: true }, null, 2));
+        // mongoose.connection.close(); // Remove or comment this out to keep the connection open for API requests
       } catch (err) {
         console.error('Import error:', err);
       }
@@ -69,13 +69,27 @@ function importCSV(){
 }
 
 app.get('/api/products', async (req, res) => {
-  try {
-    const products = await Product.find({});
-    res.json(products);
-  } catch (err) {
-    console.error('Error fetching products:', err);
-    res.status(500).json({ message: 'Error fetching products' });
-  }
+    try {
+        // Use pagination to avoid sending all 30k records at once
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 100;
+        const skip = (page - 1) * limit;
+
+        const [products, total] = await Promise.all([
+            Product.find({}).skip(skip).limit(limit),
+            Product.countDocuments({})
+        ]);
+
+        res.json({
+            products,
+            total,
+            page,
+            pages: Math.ceil(total / limit)
+        });
+    } catch (err) {
+        console.error('Error fetching products:', err);
+        res.status(500).json({ message: 'Error fetching products' });
+    }
 });
 
 app.get('/api/products/:id', async (req, res) => {
