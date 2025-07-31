@@ -1,28 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
-import { Link } from 'react-router-dom';
-
-const ProductList = () => {
-  const [products, setProducts] = useState([]);
-
-  useEffect(() => {
-    axios.get('http://localhost:8000/api/products') // Adjust if needed
-      .then(res => setProducts(res.data.products))
-      .catch(err => console.error('Error fetching products:', err));
-  }, []);
-
+export default function ProductList({ products }) {
   return (
-    <div style={{ padding: '20px' }}>
-      <h2>All Products</h2>
-      <ul>
-        {products.map(p => (
-          <li key={p._id}>
-            <Link to={`/products/${p.id}`}>{p.name} — ₹{p.retail_price}</Link>
-          </li>
-        ))}
-      </ul>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+      {products.map(p => (
+        <div key={p._id} className="border rounded p-2 shadow">
+          <h3 className="font-semibold">{p.name}</h3>
+          <p>Cost: ₹{p.cost}</p>
+          <p>Department: {p.department?.name}</p>
+        </div>
+      ))}
     </div>
   );
-};
-
-export default ProductList;
+}

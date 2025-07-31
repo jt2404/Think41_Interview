@@ -41,14 +41,64 @@ app.listen(PORT, () => {
     //  importCSV();
 }
 
-function importCSV(){
-    const results =[]
-     const departmentsMap = new Map();
-    fs.createReadStream('./products.csv').pipe(csv())
+// function importCSV(){
+//     const results =[]
+//      const departmentsMap = new Map();
+//     fs.createReadStream('./products.csv').pipe(csv())
+//     .on('data', (data) => {
+//         const deptName = data.department.trim();
+//       if (!departmentsMap.has(deptName)) {
+//         departmentsMap.set(deptName, null); // placeholder for ObjectId later
+//       }
+//       results.push({
+//         id: Number(data.id),
+//         cost: Number(data.cost),
+//         category: data.category,
+//         name: data.name,
+//         brand: data.brand,
+//         retail_price: Number(data.retail_price),
+//         department: deptName,
+//         sku: data.sku,
+//         distribution_center_id: Number(data.distribution_center_id),
+//       });
+//     })
+//     .on('end', async () => {
+//       try {
+//          for (let [deptName] of departmentsMap) {
+//           const dept = await Department.findOneAndUpdate(
+//             { name: deptName },
+//             { name: deptName },
+//             { upsert: true, new: true }
+//           );
+//           departmentsMap.set(deptName, dept._id);
+//         }
+//          const updatedProducts = results.map((p) => ({
+//           ...p,
+//           department: departmentsMap.get(p.department),
+//         }));
+//         console.log('Inserting products:', updatedProducts.length);
+//         await Product.insertMany(updatedProducts);
+//         console.log('Products imported successfully!');
+//         // fs.writeFileSync(flagFile, JSON.stringify({ productsImported: true }, null, 2));
+//         // mongoose.connection.close(); // Remove or comment this out to keep the connection open for API requests
+//       } catch (err) {
+//         console.error('Import error:', err);
+//       }
+//     });
+// }
+
+function importCSV() {
+  const results = [];
+  const departmentsMap = new Map();
+  let count = 0;
+
+  fs.createReadStream('./products.csv')
+    .pipe(csv())
     .on('data', (data) => {
-        const deptName = data.department.trim();
+      count++;
+      const deptName = data.department.trim();
       if (!departmentsMap.has(deptName)) {
-        departmentsMap.set(deptName, null); // placeholder for ObjectId later
+        departmentsMap.set(deptName, null); // placeholder for ObjectId
       }
       results.push({
         id: Number(data.id),
@@ -64,7 +114,7 @@ function importCSV(){
     })
     .on('end', async () => {
       try {
-         for (let [deptName] of departmentsMap) {
+        for (let [deptName] of departmentsMap) {
           const dept = await Department.findOneAndUpdate(
             { name: deptName },
             { name: deptName },
@@ -72,20 +122,21 @@ function importCSV(){
           );
           departmentsMap.set(deptName, dept._id);
         }
-         const updatedProducts = results.map((p) => ({
+
+        const updatedProducts = results.map(p => ({
           ...p,
-          department: departmentsMap.get(p.departmentName),
+          department: departmentsMap.get(p.department),
         }));
-         const finalProducts = updatedProducts.map(({ departmentName, ...rest }) => rest);
-        await Product.insertMany(finalProducts);
+
+        console.log('Inserting products:', updatedProducts.length);
+        await Product.insertMany(updatedProducts, { ordered: false });
         console.log('Products imported successfully!');
-        // fs.writeFileSync(flagFile, JSON.stringify({ productsImported: true }, null, 2));
-        // mongoose.connection.close(); // Remove or comment this out to keep the connection open for API requests
       } catch (err) {
-        console.error('Import error:', err);
+        console.error('Import error:', err.message);
       }
     });
 }
+
 
 app.get('/api/products', async (req, res) => {
     try {
@@ -149,7 +200,7 @@ app.get('/api/departments/:id', async (req, res) => {
 
 app.get('/api/departments/:id/products', async (req, res) => {
   try {
-    const products = await Product.find({ department: req.params.id });
+    const products = await Product.find({ department: req.params.id }).populate('department');
     res.json(products);
   } catch (err) {
     console.error('Error fetching products for department:', err);

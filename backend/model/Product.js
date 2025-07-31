@@ -17,7 +17,6 @@ const productSchema = new mongoose.Schema({
     {
     type: Number,
     required: true,
-    unique: true
 },
  department: {
     type: mongoose.Schema.Types.ObjectId,
