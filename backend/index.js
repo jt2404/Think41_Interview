@@ -2,13 +2,14 @@ const mongoose = require('mongoose');
 const express = require('express');
 const csv = require('csv-parser');
 const fs = require('fs');
+const cors = require('cors');
 const Product = require('./model/Product'); // Adjust the path as necessary
 
 const app = express();
 const PORT = process.env.PORT || 8000;
 const MONGO_URL =  "mongodb+srv://jay2404thakkar:UU0r17EDhg9N89Au@cluster0.vfinfr3.mongodb.net/"
 const flagFile = './imported.json';
-
+app.use(cors());
 app.use(express.json());
 
 mongoose.connect(MONGO_URL, {
@@ -17,6 +18,7 @@ mongoose.connect(MONGO_URL, {
 ).then(()=>{
     console.log('Connected to MongoDB');
     checkImportFlag();
+    // importCSV();
 }).catch((err)=>{
     console.error('Error connecting to MongoDB:', err);
 })
@@ -25,7 +27,7 @@ app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
 
-function checkImportFlag() {
+ function checkImportFlag() {
   if (fs.existsSync(flagFile)) {
     const flagData = JSON.parse(fs.readFileSync(flagFile, 'utf8'));
 
@@ -35,7 +37,7 @@ function checkImportFlag() {
       return;
     }
   }
-   importCSV();
+     importCSV();
 }
 
 function importCSV(){
@@ -66,7 +68,7 @@ function importCSV(){
     });
 }
 
-app.get('/products', async (req, res) => {
+app.get('/api/products', async (req, res) => {
   try {
     const products = await Product.find({});
     res.json(products);
@@ -75,4 +77,17 @@ app.get('/products', async (req, res) => {
     res.status(500).json({ message: 'Error fetching products' });
   }
 });
+
+app.get('/api/products/:id', async (req, res) => {
+  try {
+    const product = await Product.findOne({ id: req.params.id });
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+    res.json(product);
+  } catch (err) {
+    console.error('Error fetching product:', err);
+    res.status(500).json({ message: 'Error fetching product' });
+  }
+} );
 
