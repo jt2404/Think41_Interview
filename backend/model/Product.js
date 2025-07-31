@@ -19,6 +19,10 @@ const productSchema = new mongoose.Schema({
     required: true,
     unique: true
 },
+ department: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Department'
+  }
 }, {
   timestamps: true
 }

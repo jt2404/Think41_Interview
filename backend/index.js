@@ -3,7 +3,8 @@ const express = require('express');
 const csv = require('csv-parser');
 const fs = require('fs');
 const cors = require('cors');
-const Product = require('./model/Product'); // Adjust the path as necessary
+const Product = require('./model/Product'); 
+const Department = require('./model/Department')
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -42,8 +43,13 @@ app.listen(PORT, () => {
 
 function importCSV(){
     const results =[]
+     const departmentsMap = new Map();
     fs.createReadStream('./products.csv').pipe(csv())
     .on('data', (data) => {
+        const deptName = data.department.trim();
+      if (!departmentsMap.has(deptName)) {
+        departmentsMap.set(deptName, null); // placeholder for ObjectId later
+      }
       results.push({
         id: Number(data.id),
         cost: Number(data.cost),
@@ -58,7 +64,20 @@ function importCSV(){
     })
     .on('end', async () => {
       try {
-        await Product.insertMany(results);
+         for (let [deptName] of departmentsMap) {
+          const dept = await Department.findOneAndUpdate(
+            { name: deptName },
+            { name: deptName },
+            { upsert: true, new: true }
+          );
+          departmentsMap.set(deptName, dept._id);
+        }
+         const updatedProducts = results.map((p) => ({
+          ...p,
+          department: departmentsMap.get(p.departmentName),
+        }));
+         const finalProducts = updatedProducts.map(({ departmentName, ...rest }) => rest);
+        await Product.insertMany(finalProducts);
         console.log('Products imported successfully!');
         // fs.writeFileSync(flagFile, JSON.stringify({ productsImported: true }, null, 2));
         // mongoose.connection.close(); // Remove or comment this out to keep the connection open for API requests
@@ -76,7 +95,7 @@ app.get('/api/products', async (req, res) => {
         const skip = (page - 1) * limit;
 
         const [products, total] = await Promise.all([
-            Product.find({}).skip(skip).limit(limit),
+            Product.find({}).skip(skip).limit(limit).populate('department'),
             Product.countDocuments({})
         ]);
 
