@@ -57,7 +57,7 @@ function importCSV(){
         name: data.name,
         brand: data.brand,
         retail_price: Number(data.retail_price),
-        department: data.department,
+        department: deptName,
         sku: data.sku,
         distribution_center_id: Number(data.distribution_center_id),
       });
@@ -123,4 +123,37 @@ app.get('/api/products/:id', async (req, res) => {
     res.status(500).json({ message: 'Error fetching product' });
   }
 } );
+
+app.get('/api/departments', async (req, res) => {
+  try {
+    const departments = await Department.find({});
+    res.json(departments);
+  } catch (err) {
+    console.error('Error fetching departments:', err);
+    res.status(500).json({ message: 'Error fetching departments' });
+  }
+});
+
+app.get('/api/departments/:id', async (req, res) => {
+  try {
+    const department = await Department.findById(req.params.id);
+    if (!department) {
+      return res.status(404).json({ message: 'Department not found' });
+    }
+    res.json(department);
+  } catch (err) {
+    console.error('Error fetching department:', err);
+    res.status(500).json({ message: 'Error fetching department' });
+  }
+});
+
+app.get('/api/departments/:id/products', async (req, res) => {
+  try {
+    const products = await Product.find({ department: req.params.id });
+    res.json(products);
+  } catch (err) {
+    console.error('Error fetching products for department:', err);
+    res.status(500).json({ message: 'Error fetching products for department' });
+  }
+});
 
